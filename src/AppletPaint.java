@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
 import java.awt.Dimension;
+import java.util.ArrayList;
 import java.util.Objects;
 
 public class AppletPaint extends Applet {
@@ -23,6 +24,8 @@ public class AppletPaint extends Applet {
 
     private static final int D_W = 500;
     private static final int D_H = 500;
+    private ArrayList<Rectangle2D> mm = new ArrayList<Rectangle2D>();
+
 
     public void init() {
         width = getWidth();
@@ -36,9 +39,32 @@ public class AppletPaint extends Applet {
         MouseMove bt = new MouseMove();
         addMouseMotionListener(bt);
 
-        addMouseListener(new MouseAdapter() {
+        addMouseListener(new MouseListener() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+
+            }
+
             public void mousePressed(MouseEvent e) {
                 p1 = e.getPoint();
+
+
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                System.out.println("nnnnnnnnnnnnnnn");
+                mm.add(rectangle);
+
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
 
             }
         });
@@ -93,10 +119,11 @@ public class AppletPaint extends Applet {
 
         if (Objects.equals(drawShape, shapesArr[0])) {
             okp.drRect();
+
         } else {
             okp.drCirc();
         }
-        repaint();
+
     }
 
     public void paint(Graphics g) {
@@ -110,6 +137,10 @@ public class AppletPaint extends Applet {
         Graphics2D g2 = (Graphics2D) g;
         if (rectangle != null) {
             g2.draw(rectangle);
+        }
+        for (Rectangle2D cr : mm) {
+            //System.out.println("one");
+            g2.draw(cr);
         }
         if (circle != null) {
             g2.draw(circle);
@@ -177,6 +208,7 @@ public class AppletPaint extends Applet {
                 p2 = e.getPoint();
                 //drRect();
                 drawShape();
+                repaint();
                 //repaint();
             }
 
@@ -201,6 +233,7 @@ public class AppletPaint extends Applet {
             } else {
                 rectangle.setRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
             }
+
         }
 
         public void drCirc() {
