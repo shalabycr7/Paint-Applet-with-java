@@ -1,7 +1,10 @@
 # Paint-Applet-with-java
-A small paint applet with java meant to be the final project for my summer training at ITI
+A small paint/scribble app using applet with java meant to be the final project for my summer training at ITI
 
 # Changelogs
+#### v 0.4
+* Added the ability to draw dashed shapes and lines
+* minor bug fixes
 #### v 0.3
 * Implemented free-hand mode
 * Added undo button
@@ -14,7 +17,7 @@ A small paint applet with java meant to be the final project for my summer train
 * Added clear button
 * Fixed some  minor bugs
 
-TODO-Implement the new free-hand mode
+~~TODO-Implement the new free-hand mode~~
 #### v 0.1
 * Added shape drawing
 * Added free hand mode

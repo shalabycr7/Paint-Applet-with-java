@@ -4,59 +4,71 @@ import java.awt.event.*;
 import java.util.ArrayList;
 
 public class AppletPaint extends Applet implements MouseListener, MouseMotionListener {
-    Shape shape;
+    MainShape currentShape;
     Point startPoint, dragPoint;
     Font mainFont;
-    ArrayList<Shape> shapes;
-    Choice shapeChoice, colorChoice, fillChoice;
-    Image drawingImage;
+    ArrayList<MainShape> shapesArr;
+    Choice shapeMenu, colorMenu, fillMenu;
+    Image drawCanvas;
     Graphics drawGraphics;
-    String shapeString, colorString, fillString;
-    boolean isDragMode, filledShape, eraseState = false;
+    String shapeChoice, colorChoice, fillChoice;
+    boolean isDragMode, eraseState = false;
+    int shapeFill = 1;
     Color selColor;
     Button clearBtn, undoBtn, eraseBtn, doneErasingBtn;
+    Graphics2D g2;
+    BasicStroke dashed;
 
     public void displayGUI() {
+        // Change the font
         mainFont = new Font("DialogInput", Font.PLAIN, 17);
 
+        // Create erase button
         eraseBtn = new Button("Eraser");
         eraseBtn.addActionListener(new BtnActions());
         eraseBtn.setFont(mainFont);
         add(eraseBtn);
+
         // Create clear button
         clearBtn = new Button("Clear");
         clearBtn.addActionListener(new BtnActions());
         clearBtn.setFont(mainFont);
         add(clearBtn);
+
         // Create Undo button
         undoBtn = new Button("Undo");
         undoBtn.addActionListener(new BtnActions());
         undoBtn.setFont(mainFont);
         add(undoBtn);
+
         // Creat shapes menu
-        shapeChoice = new Choice();
-        shapeChoice.addItem("Line");
-        shapeChoice.addItem("Rectangle");
-        shapeChoice.addItem("Oval");
-        shapeChoice.addItem("Rounded Rectangle");
-        shapeChoice.addItem("FreeHand");
-        shapeChoice.setFont(mainFont);
-        add(shapeChoice);
+        shapeMenu = new Choice();
+        shapeMenu.addItem("Line");
+        shapeMenu.addItem("Rectangle");
+        shapeMenu.addItem("Oval");
+        shapeMenu.addItem("Rounded Rectangle");
+        shapeMenu.addItem("FreeHand");
+        shapeMenu.setFont(mainFont);
+        add(shapeMenu);
+
         // Creat colors menu
-        colorChoice = new Choice();
-        colorChoice.addItem("Black");
-        colorChoice.addItem("Red");
-        colorChoice.addItem("Green");
-        colorChoice.addItem("Orange");
-        colorChoice.addItem("Blue");
-        colorChoice.setFont(mainFont);
-        add(colorChoice);
+        colorMenu = new Choice();
+        colorMenu.addItem("Black");
+        colorMenu.addItem("Red");
+        colorMenu.addItem("Green");
+        colorMenu.addItem("Orange");
+        colorMenu.addItem("Blue");
+        colorMenu.setFont(mainFont);
+        add(colorMenu);
+
         // Creat fill choices menu
-        fillChoice = new Choice();
-        fillChoice.addItem("Filled");
-        fillChoice.addItem("Hollow");
-        fillChoice.setFont(mainFont);
-        add(fillChoice);
+        fillMenu = new Choice();
+        fillMenu.addItem("Filled");
+        fillMenu.addItem("Hollow");
+        fillMenu.addItem("Dotted");
+        fillMenu.setFont(mainFont);
+        add(fillMenu);
+
         // Creat a button for when done erasing
         doneErasingBtn = new Button("Done");
         doneErasingBtn.addActionListener(new BtnActions());
@@ -65,16 +77,21 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         doneErasingBtn.setEnabled(false);
 
         // Creat an image as a canvas to draw
-        drawingImage = createImage(getSize().width, getSize().height);
-        drawGraphics = drawingImage.getGraphics();
+        drawCanvas = createImage(getSize().width, getSize().height);
+        drawGraphics = drawCanvas.getGraphics();
     }
 
     public void init() {
         // ArrayList to store all shapes drawn on the screen, so we can draw multiple shapes simultaneously
-        shapes = new ArrayList<>();
+        shapesArr = new ArrayList<>();
 
         // Display the GUI
         displayGUI();
+
+        // Set the stroke settings
+        float[] dash1 = {10.0f};
+        dashed = new BasicStroke(1.4f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, dash1, 0.0f);
+
 
         // Initiate the first points
         startPoint = new Point(0, 0);
@@ -96,9 +113,9 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
 
     public void mousePressed(MouseEvent e) {
         // Get the values of the choice menu when the mouse is clicked
-        shapeString = shapeChoice.getSelectedItem();
-        colorString = colorChoice.getSelectedItem();
-        fillString = fillChoice.getSelectedItem();
+        shapeChoice = shapeMenu.getSelectedItem();
+        colorChoice = colorMenu.getSelectedItem();
+        fillChoice = fillMenu.getSelectedItem();
 
         // Set the state of the erase button
         doneErasingBtn.setEnabled(eraseState);
@@ -108,15 +125,18 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         startPoint.y = e.getY();
 
         // Switch on the menu values
-        switch (fillString) {
+        switch (fillChoice) {
             case "Filled":
-                filledShape = true;
+                shapeFill = 1;
                 break;
             case "Hollow":
-                filledShape = false;
+                shapeFill = 2;
+                break;
+            case "Dotted":
+                shapeFill = 3;
                 break;
         }
-        switch (colorString) {
+        switch (colorChoice) {
             case "Black":
                 selColor = Color.BLACK;
                 break;
@@ -133,22 +153,22 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
                 selColor = Color.BLUE;
                 break;
         }
-        switch (shapeString) {
+        switch (shapeChoice) {
             case "Line":
                 // Construct a new line as a new shape using the start point same as other shapes
-                shape = new Line(startPoint.x, startPoint.y, selColor);
+                currentShape = new Line(startPoint.x, startPoint.y, selColor, shapeFill);
                 break;
             case "Rectangle":
-                shape = new Rectangle(startPoint.x, startPoint.y, selColor, filledShape);
+                currentShape = new Rectangle(startPoint.x, startPoint.y, selColor, shapeFill);
                 break;
             case "Oval":
-                shape = new Oval(startPoint.x, startPoint.y, selColor, filledShape);
+                currentShape = new Oval(startPoint.x, startPoint.y, selColor, shapeFill);
                 break;
             case "Rounded Rectangle":
-                shape = new RoundRectangle(startPoint.x, startPoint.y, selColor, filledShape);
+                currentShape = new RoundRectangle(startPoint.x, startPoint.y, selColor, shapeFill);
                 break;
             case "FreeHand":
-                shape = new FreeShape(startPoint.x, startPoint.y, selColor, eraseState);
+                currentShape = new FreeShape(startPoint.x, startPoint.y, selColor, eraseState);
                 break;
         }
 
@@ -158,7 +178,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         if (isDragMode) {
             // Add the current shape to ArrayList
             isDragMode = false;
-            shapes.add(shape);
+            shapesArr.add(currentShape);
         }
         repaint();
     }
@@ -173,15 +193,16 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         // Get the mouse pointer location while dragging
         dragPoint.x = e.getX();
         dragPoint.y = e.getY();
-        shape.setDragPoint(dragPoint.x, dragPoint.y);
+        currentShape.setDragPoint(dragPoint.x, dragPoint.y);
+
         // Get points as list for free hand
-        shape.setPointsVec(e.getPoint());
+        currentShape.setPointsVec(e.getPoint());
 
-        // Update the image
-        getGraphics().drawImage(drawingImage, 0, 0, null);
+        // Update the canvas
+        getGraphics().drawImage(drawCanvas, 0, 0, null);
 
-        // Method to draw while mouse is dragging
-        shape.drawWhileDragging(getGraphics());
+        // Draw while mouse is dragging
+        currentShape.drawWhileDragging(getGraphics());
     }
 
     public void paint(Graphics g) {
@@ -191,16 +212,16 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
     public void update(Graphics g) {
 
         // Creat an image canvas if none existed
-        if (drawingImage == null) {
-            drawingImage = createImage(getSize().width, getSize().height);
-            drawGraphics = drawingImage.getGraphics();
+        if (drawCanvas == null) {
+            drawCanvas = createImage(getSize().width, getSize().height);
+            drawGraphics = drawCanvas.getGraphics();
         }
         // Draw every shape in the ArrayList
-        for (Shape s : shapes) {
-            s.draw(drawGraphics);
+        for (MainShape s : shapesArr) {
+            s.shapeDraw(drawGraphics);
         }
         // paint the canvas image to the applet viewing window
-        g.drawImage(drawingImage, 0, 0, this);
+        g.drawImage(drawCanvas, 0, 0, this);
     }
 
     // Just to demonstrate another way to add event listeners
@@ -208,31 +229,35 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            // clear the screen
+            // Clear the screen
             if (e.getSource() == clearBtn) {
-                shapes.clear();
+                shapesArr.clear();
                 drawGraphics.setColor(Color.WHITE);
                 drawGraphics.fillRect(0, 0, getSize().width, getSize().height);
                 repaint();
             } else if (e.getSource() == undoBtn) {
-                // check that the ArrayList is not empty
-                // remove the last drawn shape from the ArrayList then redraw
-                if (shapes.size() != 0) shapes.remove(shapes.size() - 1);
+                // Check that the ArrayList is not empty
+                // Remove the last drawn shape from the ArrayList then redraw
+                if (shapesArr.size() != 0) shapesArr.remove(shapesArr.size() - 1);
                 drawGraphics.setColor(Color.WHITE);
                 drawGraphics.fillRect(0, 0, getSize().width, getSize().height);
                 repaint();
             }
+            // Enable erase button & done button
             if (e.getSource() == eraseBtn) eraseState = true;
             if (e.getSource() == doneErasingBtn) eraseState = false;
         }
     }
 
-    abstract class Shape {
+    // Creat an abstract parent class, so we can initiate multiple shapes object
+    abstract class MainShape {
+        // Declare the required variables for each shape
         protected Point startPoint, currentPoint;
         protected Color shapeColor;
-        protected boolean filledState;
+        protected int filledState;
 
-        abstract void draw(Graphics g);
+        // Declare the needed methods as abstract
+        abstract void shapeDraw(Graphics g);
 
         abstract void drawWhileDragging(Graphics g);
 
@@ -242,27 +267,41 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         }
     }
 
-    class Line extends Shape {
+    class Line extends MainShape {
         Line() {
             startPoint = new Point(0, 0);
             currentPoint = new Point(0, 0);
         }
 
-        Line(int x1, int y1, Color c) {
+        // Create a parametrized constructor to set the initial values for te variables
+        Line(int x1, int y1, Color c, int filledState) {
             this();
             this.startPoint.x = x1;
             this.startPoint.y = y1;
             this.shapeColor = c;
+            this.filledState = filledState;
         }
 
+        // Override the parent class methods to draw that specific shape
         void drawWhileDragging(Graphics g) {
             g.setColor(shapeColor);
-            g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
+            specifiedShape(g);
         }
 
-        public void draw(Graphics g) {
+        public void shapeDraw(Graphics g) {
             g.setColor(shapeColor);
-            g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
+            specifiedShape(g);
+        }
+
+        private void specifiedShape(Graphics g) {
+            g2 = (Graphics2D) g;
+            if (filledState == 1 || filledState == 2) {
+                g2.setStroke(new BasicStroke(0));
+                g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
+            } else {
+                g2.setStroke(dashed);
+                g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
+            }
         }
 
         void setDragPoint(int x, int y) {
@@ -272,9 +311,10 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
 
     }
 
-    class FreeShape extends Shape {
-        private boolean eraseState;
+    class FreeShape extends MainShape {
+        // Create an ArrayList to store the dragging coordinates as points
         private final ArrayList<Point> pointsVec = new ArrayList<>();
+        private boolean eraseState;
 
         FreeShape() {
             startPoint = new Point(0, 0);
@@ -289,6 +329,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
             this.eraseState = eraseState;
         }
 
+        // Add the points to the ArrayList while dragging
         public void setPointsVec(Point point) {
             pointsVec.add(point);
         }
@@ -296,13 +337,14 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         void drawWhileDragging(Graphics g) {
             if (eraseState) shapeColor = Color.WHITE;
             g.setColor(shapeColor);
+            // For each point in the ArrayList draw an oval using them as coordinates
             for (Point c : pointsVec) {
                 g.fillOval(c.x, c.y, 20, 20);
             }
 
         }
 
-        public void draw(Graphics g) {
+        public void shapeDraw(Graphics g) {
             if (eraseState) shapeColor = Color.WHITE;
             g.setColor(shapeColor);
             for (Point c : pointsVec) {
@@ -315,7 +357,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
 
     }
 
-    class Rectangle extends Shape {
+    class Rectangle extends MainShape {
         private int x;
         private int y;
         private int width;
@@ -326,7 +368,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
             currentPoint = new Point(0, 0);
         }
 
-        Rectangle(int x1, int y1, Color c, boolean filledState) {
+        Rectangle(int x1, int y1, Color c, int filledState) {
             this();
             this.startPoint.x = x1;
             this.startPoint.y = y1;
@@ -335,6 +377,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         }
 
         void drawWhileDragging(Graphics g) {
+            //System.out.println(dotState);
             // Get the dimensions
             setX(startPoint.x);
             setY(startPoint.y);
@@ -358,14 +401,26 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
                 }
             }
             g.setColor(shapeColor);
-            if (filledState) g.fillRect(getX(), getY(), getWidth(), getHeight());
-            else g.drawRect(getX(), getY(), getWidth(), getHeight());
+
+            specifiedShape(g);
         }
 
-        public void draw(Graphics g) {
+        public void shapeDraw(Graphics g) {
             g.setColor(shapeColor);
-            if (filledState) g.fillRect(getX(), getY(), getWidth(), getHeight());
-            else g.drawRect(getX(), getY(), getWidth(), getHeight());
+            specifiedShape(g);
+        }
+
+        private void specifiedShape(Graphics g) {
+            g2 = (Graphics2D) g;
+            if (filledState == 1) {
+                g.fillRect(getX(), getY(), getWidth(), getHeight());
+            } else if (filledState == 2) {
+                g2.setStroke(new BasicStroke(0));
+                g.drawRect(getX(), getY(), getWidth(), getHeight());
+            } else {
+                g2.setStroke(dashed);
+                g.drawRect(getX(), getY(), getWidth(), getHeight());
+            }
         }
 
         void setDragPoint(int x, int y) {
@@ -406,7 +461,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         }
     }
 
-    class RoundRectangle extends Shape {
+    class RoundRectangle extends MainShape {
         private int x;
         private int y;
         private int width;
@@ -417,7 +472,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
             currentPoint = new Point(0, 0);
         }
 
-        RoundRectangle(int x1, int y1, Color c, boolean filledState) {
+        RoundRectangle(int x1, int y1, Color c, int filledState) {
             this();
             this.startPoint.x = x1;
             this.startPoint.y = y1;
@@ -426,12 +481,10 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         }
 
         void drawWhileDragging(Graphics g) {
-            // Get the dimensions
             setX(startPoint.x);
             setY(startPoint.y);
             setWidth(currentPoint.x - startPoint.x);
             setHeight(currentPoint.y - startPoint.y);
-            // Make sure to be able to draw in all directions
             if (getWidth() < 0) {
                 setWidth(-getWidth());
                 setX(getX() - getWidth() + 1);
@@ -449,14 +502,25 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
                 }
             }
             g.setColor(shapeColor);
-            if (filledState) g.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
-            else g.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+            specifiedShape(g);
         }
 
-        public void draw(Graphics g) {
+        void shapeDraw(Graphics g) {
             g.setColor(shapeColor);
-            if (filledState) g.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
-            else g.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+            specifiedShape(g);
+        }
+
+        private void specifiedShape(Graphics g) {
+            g2 = (Graphics2D) g;
+            if (filledState == 1) {
+                g.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+            } else if (filledState == 2) {
+                g2.setStroke(new BasicStroke(0));
+                g.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+            } else {
+                g2.setStroke(dashed);
+                g.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+            }
         }
 
         void setDragPoint(int x, int y) {
@@ -498,7 +562,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
     }
 
 
-    class Oval extends Shape {
+    class Oval extends MainShape {
         private int x;
         private int y;
         private int width;
@@ -509,7 +573,7 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
             currentPoint = new Point(0, 0);
         }
 
-        Oval(int x1, int y1, Color c, boolean filledState) {
+        Oval(int x1, int y1, Color c, int filledState) {
             this();
             this.startPoint.x = x1;
             this.startPoint.y = y1;
@@ -522,7 +586,6 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
             setY(startPoint.y);
             setWidth(currentPoint.x - startPoint.x);
             setHeight(currentPoint.y - startPoint.y);
-            // make sure to be able to draw in all directions
             if (getWidth() < 0) {
                 setWidth(-getWidth());
                 setX(getX() - getWidth() + 1);
@@ -540,14 +603,25 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
                 }
             }
             g.setColor(shapeColor);
-            if (filledState) g.fillOval(getX(), getY(), getWidth(), getHeight());
-            else g.drawOval(getX(), getY(), getWidth(), getHeight());
+            specifiedShape(g);
         }
 
-        public void draw(Graphics g) {
+        void shapeDraw(Graphics g) {
             g.setColor(shapeColor);
-            if (filledState) g.fillOval(getX(), getY(), getWidth(), getHeight());
-            else g.drawOval(getX(), getY(), getWidth(), getHeight());
+            specifiedShape(g);
+        }
+
+        private void specifiedShape(Graphics g) {
+            g2 = (Graphics2D) g;
+            if (filledState == 1) {
+                g.fillOval(getX(), getY(), getWidth(), getHeight());
+            } else if (filledState == 2) {
+                g2.setStroke(new BasicStroke(0));
+                g.drawOval(getX(), getY(), getWidth(), getHeight());
+            } else {
+                g2.setStroke(dashed);
+                g.drawOval(getX(), getY(), getWidth(), getHeight());
+            }
         }
 
         void setDragPoint(int x, int y) {
