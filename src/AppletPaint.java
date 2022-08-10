@@ -1,54 +1,88 @@
-import java.applet.*;
-import java.awt.event.*;
+import java.applet.Applet;
 import java.awt.*;
-import java.util.*;
+import java.awt.event.*;
+import java.util.ArrayList;
 
 public class AppletPaint extends Applet implements MouseListener, MouseMotionListener {
-
     Shape shape;
     Point startPoint, dragPoint;
+    Font mainFont;
     ArrayList<Shape> shapes;
     Choice shapeChoice, colorChoice, fillChoice;
     Image drawingImage;
     Graphics drawGraphics;
     String shapeString, colorString, fillString;
-    boolean isDragMode, filledShape;
+    boolean isDragMode, filledShape, eraseState = false;
     Color selColor;
-    Button clearBtn;
+    Button clearBtn, undoBtn, eraseBtn, doneErasingBtn;
 
-    public void init() {
-        shapes = new ArrayList<>();
+    public void displayGUI() {
+        mainFont = new Font("DialogInput", Font.PLAIN, 17);
+
+        eraseBtn = new Button("Eraser");
+        eraseBtn.addActionListener(new BtnActions());
+        eraseBtn.setFont(mainFont);
+        add(eraseBtn);
+        // Create clear button
         clearBtn = new Button("Clear");
         clearBtn.addActionListener(new BtnActions());
+        clearBtn.setFont(mainFont);
         add(clearBtn);
+        // Create Undo button
+        undoBtn = new Button("Undo");
+        undoBtn.addActionListener(new BtnActions());
+        undoBtn.setFont(mainFont);
+        add(undoBtn);
+        // Creat shapes menu
         shapeChoice = new Choice();
         shapeChoice.addItem("Line");
         shapeChoice.addItem("Rectangle");
         shapeChoice.addItem("Oval");
+        shapeChoice.addItem("Rounded Rectangle");
         shapeChoice.addItem("FreeHand");
+        shapeChoice.setFont(mainFont);
         add(shapeChoice);
-
+        // Creat colors menu
         colorChoice = new Choice();
+        colorChoice.addItem("Black");
         colorChoice.addItem("Red");
         colorChoice.addItem("Green");
+        colorChoice.addItem("Orange");
         colorChoice.addItem("Blue");
+        colorChoice.setFont(mainFont);
         add(colorChoice);
-
+        // Creat fill choices menu
         fillChoice = new Choice();
         fillChoice.addItem("Filled");
         fillChoice.addItem("Hollow");
+        fillChoice.setFont(mainFont);
         add(fillChoice);
+        // Creat a button for when done erasing
+        doneErasingBtn = new Button("Done");
+        doneErasingBtn.addActionListener(new BtnActions());
+        doneErasingBtn.setFont(mainFont);
+        add(doneErasingBtn);
+        doneErasingBtn.setEnabled(false);
 
+        // Creat an image as a canvas to draw
         drawingImage = createImage(getSize().width, getSize().height);
         drawGraphics = drawingImage.getGraphics();
+    }
 
-        System.out.println("set up image");
+    public void init() {
+        // ArrayList to store all shapes drawn on the screen, so we can draw multiple shapes simultaneously
+        shapes = new ArrayList<>();
 
+        // Display the GUI
+        displayGUI();
+
+        // Initiate the first points
         startPoint = new Point(0, 0);
         dragPoint = new Point(0, 0);
+
+        // Add mouse event listeners
         addMouseListener(this);
         addMouseMotionListener(this);
-
     }
 
     public void mouseEntered(MouseEvent e) {
@@ -61,13 +95,19 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
     }
 
     public void mousePressed(MouseEvent e) {
-
-        System.out.println("Pressed");
+        // Get the values of the choice menu when the mouse is clicked
         shapeString = shapeChoice.getSelectedItem();
         colorString = colorChoice.getSelectedItem();
         fillString = fillChoice.getSelectedItem();
+
+        // Set the state of the erase button
+        doneErasingBtn.setEnabled(eraseState);
+
+        // Get the values of the mouse pointer
         startPoint.x = e.getX();
         startPoint.y = e.getY();
+
+        // Switch on the menu values
         switch (fillString) {
             case "Filled":
                 filledShape = true;
@@ -77,11 +117,17 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
                 break;
         }
         switch (colorString) {
+            case "Black":
+                selColor = Color.BLACK;
+                break;
             case "Red":
                 selColor = Color.RED;
                 break;
             case "Green":
                 selColor = Color.GREEN;
+                break;
+            case "Orange":
+                selColor = Color.ORANGE;
                 break;
             case "Blue":
                 selColor = Color.BLUE;
@@ -89,7 +135,8 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
         }
         switch (shapeString) {
             case "Line":
-                shape = new Line(startPoint.x, startPoint.y, selColor); // i construct a new line using the start point (the point at which the mouse is pressed)
+                // Construct a new line as a new shape using the start point same as other shapes
+                shape = new Line(startPoint.x, startPoint.y, selColor);
                 break;
             case "Rectangle":
                 shape = new Rectangle(startPoint.x, startPoint.y, selColor, filledShape);
@@ -97,298 +144,447 @@ public class AppletPaint extends Applet implements MouseListener, MouseMotionLis
             case "Oval":
                 shape = new Oval(startPoint.x, startPoint.y, selColor, filledShape);
                 break;
+            case "Rounded Rectangle":
+                shape = new RoundRectangle(startPoint.x, startPoint.y, selColor, filledShape);
+                break;
             case "FreeHand":
-                shape = new FreeShape();
+                shape = new FreeShape(startPoint.x, startPoint.y, selColor, eraseState);
                 break;
         }
-
 
     }
 
     public void mouseReleased(MouseEvent e) {
         if (isDragMode) {
-            shapes.add(shape);
+            // Add the current shape to ArrayList
             isDragMode = false;
+            shapes.add(shape);
         }
         repaint();
-
     }
 
     public void mouseMoved(MouseEvent e) {
     }
 
     public void mouseDragged(MouseEvent e) {
+        // Indicate the drag mode is on
         isDragMode = true;
+
+        // Get the mouse pointer location while dragging
         dragPoint.x = e.getX();
         dragPoint.y = e.getY();
+        shape.setDragPoint(dragPoint.x, dragPoint.y);
+        // Get points as list for free hand
+        shape.setPointsVec(e.getPoint());
 
-        switch (shapeString) {
-            case "FreeHand":
-                shape = new FreeShape();
-                break;
-        }
-        shape.setDragPoint(dragPoint.x, dragPoint.y);  // set the drag points to the already created shape
-
+        // Update the image
         getGraphics().drawImage(drawingImage, 0, 0, null);
-        shape.drawWhileDragging(getGraphics()); // i call this method to draw while mouse is dragging
+
+        // Method to draw while mouse is dragging
+        shape.drawWhileDragging(getGraphics());
     }
 
     public void paint(Graphics g) {
-
         update(g);
     }
 
     public void update(Graphics g) {
 
-        // create an off-screen graphics drawing environment if none
-        //existed
-        // or if the user resized the applet drawing area to a different
-        // size
+        // Creat an image canvas if none existed
         if (drawingImage == null) {
-
-            System.out.println("Image is Null");
             drawingImage = createImage(getSize().width, getSize().height);
             drawGraphics = drawingImage.getGraphics();
         }
-
-        for (Shape s : shapes)
+        // Draw every shape in the ArrayList
+        for (Shape s : shapes) {
             s.draw(drawGraphics);
-
-        // paint the offscreen image to the applet viewing window
+        }
+        // paint the canvas image to the applet viewing window
         g.drawImage(drawingImage, 0, 0, this);
-
     }
 
+    // Just to demonstrate another way to add event listeners
     class BtnActions implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            // clear the screen
             if (e.getSource() == clearBtn) {
-                // clear the screen
-                System.out.println("Clearing");
                 shapes.clear();
                 drawGraphics.setColor(Color.WHITE);
                 drawGraphics.fillRect(0, 0, getSize().width, getSize().height);
                 repaint();
+            } else if (e.getSource() == undoBtn) {
+                // check that the ArrayList is not empty
+                // remove the last drawn shape from the ArrayList then redraw
+                if (shapes.size() != 0) shapes.remove(shapes.size() - 1);
+                drawGraphics.setColor(Color.WHITE);
+                drawGraphics.fillRect(0, 0, getSize().width, getSize().height);
+                repaint();
             }
+            if (e.getSource() == eraseBtn) eraseState = true;
+            if (e.getSource() == doneErasingBtn) eraseState = false;
         }
     }
-}
 
+    abstract class Shape {
+        protected Point startPoint, currentPoint;
+        protected Color shapeColor;
+        protected boolean filledState;
 
-abstract class Shape {
+        abstract void draw(Graphics g);
 
-    Color shapeColor;
-    boolean filled;
+        abstract void drawWhileDragging(Graphics g);
 
-    abstract void draw(Graphics g);
+        abstract void setDragPoint(int x, int y);
 
-    void drawWhileDragging(Graphics g) {
+        public void setPointsVec(Point point) {
+        }
     }
 
-    void setDragPoint(int x, int y) {
-    }
-}
+    class Line extends Shape {
+        Line() {
+            startPoint = new Point(0, 0);
+            currentPoint = new Point(0, 0);
+        }
 
-class Line extends Shape {
+        Line(int x1, int y1, Color c) {
+            this();
+            this.startPoint.x = x1;
+            this.startPoint.y = y1;
+            this.shapeColor = c;
+        }
 
-    private Point startPoint;
-    private Point currentPoint;
-    private Color shapeColor;
+        void drawWhileDragging(Graphics g) {
+            g.setColor(shapeColor);
+            g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
+        }
 
+        public void draw(Graphics g) {
+            g.setColor(shapeColor);
+            g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
+        }
 
-    public Point getStartPoint() {
-        return startPoint;
-    }
+        void setDragPoint(int x, int y) {
+            this.currentPoint.x = x;
+            this.currentPoint.y = y;
+        }
 
-    public Point getCurrentPoint() {
-        return currentPoint;
-    }
-
-    public void setStartPoint(Point point) {
-        this.startPoint = point;
-    }
-
-    public void setCurrentPoint(Point point) {
-        this.currentPoint = point;
-    }
-
-    void drawWhileDragging(Graphics g) {
-        g.setColor(Color.ORANGE);
-        g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
-        g.setColor(Color.BLACK);
     }
 
-    public void draw(Graphics g) {
-        g.setColor(shapeColor);
-        g.drawLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y);
-    }
+    class FreeShape extends Shape {
+        private boolean eraseState;
+        private final ArrayList<Point> pointsVec = new ArrayList<>();
 
-    Line() {
-        startPoint = new Point(0, 0);
-        currentPoint = new Point(0, 0);
-    }
+        FreeShape() {
+            startPoint = new Point(0, 0);
+            currentPoint = new Point(0, 0);
+        }
 
-    Line(int x1, int y1, Color c) {
-        this();
-        this.startPoint.x = x1;
-        this.startPoint.y = y1;
-        this.shapeColor = c;
-    }
+        FreeShape(int x1, int y1, Color c, boolean eraseState) {
+            this();
+            this.startPoint.x = x1;
+            this.startPoint.y = y1;
+            this.shapeColor = c;
+            this.eraseState = eraseState;
+        }
 
-    void setDragPoint(int x, int y) {
-        this.currentPoint.x = x;
-        this.currentPoint.y = y;
-        System.out.println("Current-X:" + currentPoint.x + " currentPoint-Y" + currentPoint.y);
-        System.out.println("start-X:" + startPoint.x + " startPoint-Y" + startPoint.y);
-    }
+        public void setPointsVec(Point point) {
+            pointsVec.add(point);
+        }
 
-}
+        void drawWhileDragging(Graphics g) {
+            if (eraseState) shapeColor = Color.WHITE;
+            g.setColor(shapeColor);
+            for (Point c : pointsVec) {
+                g.fillOval(c.x, c.y, 20, 20);
+            }
 
-class FreeShape extends Shape {
+        }
 
-    private ArrayList<Point> dragPoints = new ArrayList<Point>();
-
-    public ArrayList<Point> getDragPoints() {
-        return dragPoints;
-    }
-
-    public void setDragPoints(Point point) {
-        dragPoints.add(point);
-    }
-
-    public void draw(Graphics g) {
-        //g.fillOval();
-    }
-
-    public FreeShape() {
-    }
-}
-
-
-class Rectangle extends Shape {
-    private Point startPoint, currentPoint;
-    private Color shapeColor;
-    private int x, y, width, height;
-    private boolean filledState;
-
-    void drawWhileDragging(Graphics g) {
-        x = startPoint.x;
-        y = startPoint.y;
-        width = currentPoint.x - startPoint.x;
-        height = currentPoint.y - startPoint.y;
-        // make sure to be able to draw in all directions
-        if (width < 0) {
-            width = -width;
-            x = x - width + 1;
-            if (x < 0) {
-                width += x;
-                x = 0;
+        public void draw(Graphics g) {
+            if (eraseState) shapeColor = Color.WHITE;
+            g.setColor(shapeColor);
+            for (Point c : pointsVec) {
+                g.fillOval(c.x, c.y, 20, 20);
             }
         }
-        if (height < 0) {
-            height = -height;
-            y = y - height + 1;
-            if (y < 0) {
-                height += y;
-                y = 0;
-            }
+
+        void setDragPoint(int x, int y) {
         }
-        g.setColor(shapeColor);
-        if (filledState)
-            g.fillRect(x, y, width, height);
-        else
-            g.drawRect(x, y, width, height);
+
     }
 
-    public void draw(Graphics g) {
-        g.setColor(shapeColor);
-        if (filledState)
-            g.fillRect(x, y, width, height);
-        else
-            g.drawRect(x, y, width, height);
-    }
+    class Rectangle extends Shape {
+        private int x;
+        private int y;
+        private int width;
+        private int height;
 
-    Rectangle() {
-        startPoint = new Point(0, 0);
-        currentPoint = new Point(0, 0);
-    }
-
-    Rectangle(int x1, int y1, Color c, boolean filledState) {
-        this();
-        this.startPoint.x = x1;
-        this.startPoint.y = y1;
-        this.shapeColor = c;
-        this.filledState = filledState;
-    }
-
-    void setDragPoint(int x, int y) {
-        this.currentPoint.x = x;
-        this.currentPoint.y = y;
-    }
-
-}
-
-
-class Oval extends Shape {
-    private Point startPoint, currentPoint;
-    private Color shapeColor;
-    private int x, y, width, height;
-    private boolean filledState;
-
-    void drawWhileDragging(Graphics g) {
-        x = startPoint.x;
-        y = startPoint.y;
-        width = currentPoint.x - startPoint.x;
-        height = currentPoint.y - startPoint.y;
-        // make sure to be able to draw in all directions
-        if (width < 0) {
-            width = -width;
-            x = x - width + 1;
-            if (x < 0) {
-                width += x;
-                x = 0;
-            }
+        Rectangle() {
+            startPoint = new Point(0, 0);
+            currentPoint = new Point(0, 0);
         }
-        if (height < 0) {
-            height = -height;
-            y = y - height + 1;
-            if (y < 0) {
-                height += y;
-                y = 0;
-            }
+
+        Rectangle(int x1, int y1, Color c, boolean filledState) {
+            this();
+            this.startPoint.x = x1;
+            this.startPoint.y = y1;
+            this.shapeColor = c;
+            this.filledState = filledState;
         }
-        g.setColor(shapeColor);
-        if (filledState)
-            g.fillOval(x, y, width, height);
-        else
-            g.drawOval(x, y, width, height);
+
+        void drawWhileDragging(Graphics g) {
+            // Get the dimensions
+            setX(startPoint.x);
+            setY(startPoint.y);
+            setWidth(currentPoint.x - startPoint.x);
+            setHeight(currentPoint.y - startPoint.y);
+            // Make sure to be able to draw in all directions
+            if (getWidth() < 0) {
+                setWidth(-getWidth());
+                setX(getX() - getWidth() + 1);
+                if (getX() < 0) {
+                    setWidth(getWidth() + getX());
+                    setX(0);
+                }
+            }
+            if (getHeight() < 0) {
+                setHeight(-getHeight());
+                setY(getY() - getHeight() + 1);
+                if (getY() < 0) {
+                    setHeight(getHeight() + getY());
+                    setY(0);
+                }
+            }
+            g.setColor(shapeColor);
+            if (filledState) g.fillRect(getX(), getY(), getWidth(), getHeight());
+            else g.drawRect(getX(), getY(), getWidth(), getHeight());
+        }
+
+        public void draw(Graphics g) {
+            g.setColor(shapeColor);
+            if (filledState) g.fillRect(getX(), getY(), getWidth(), getHeight());
+            else g.drawRect(getX(), getY(), getWidth(), getHeight());
+        }
+
+        void setDragPoint(int x, int y) {
+            this.currentPoint.x = x;
+            this.currentPoint.y = y;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public void setX(int x) {
+            this.x = x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public void setY(int y) {
+            this.y = y;
+        }
+
+        public int getWidth() {
+            return width;
+        }
+
+        public void setWidth(int width) {
+            this.width = width;
+        }
+
+        public int getHeight() {
+            return height;
+        }
+
+        public void setHeight(int height) {
+            this.height = height;
+        }
     }
 
-    public void draw(Graphics g) {
-        g.setColor(shapeColor);
-        if (filledState)
-            g.fillOval(x, y, width, height);
-        else
-            g.drawOval(x, y, width, height);
+    class RoundRectangle extends Shape {
+        private int x;
+        private int y;
+        private int width;
+        private int height;
+
+        RoundRectangle() {
+            startPoint = new Point(0, 0);
+            currentPoint = new Point(0, 0);
+        }
+
+        RoundRectangle(int x1, int y1, Color c, boolean filledState) {
+            this();
+            this.startPoint.x = x1;
+            this.startPoint.y = y1;
+            this.shapeColor = c;
+            this.filledState = filledState;
+        }
+
+        void drawWhileDragging(Graphics g) {
+            // Get the dimensions
+            setX(startPoint.x);
+            setY(startPoint.y);
+            setWidth(currentPoint.x - startPoint.x);
+            setHeight(currentPoint.y - startPoint.y);
+            // Make sure to be able to draw in all directions
+            if (getWidth() < 0) {
+                setWidth(-getWidth());
+                setX(getX() - getWidth() + 1);
+                if (getX() < 0) {
+                    setWidth(getWidth() + getX());
+                    setX(0);
+                }
+            }
+            if (getHeight() < 0) {
+                setHeight(-getHeight());
+                setY(getY() - getHeight() + 1);
+                if (getY() < 0) {
+                    setHeight(getHeight() + getY());
+                    setY(0);
+                }
+            }
+            g.setColor(shapeColor);
+            if (filledState) g.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+            else g.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+        }
+
+        public void draw(Graphics g) {
+            g.setColor(shapeColor);
+            if (filledState) g.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+            else g.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 30, 30);
+        }
+
+        void setDragPoint(int x, int y) {
+            this.currentPoint.x = x;
+            this.currentPoint.y = y;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public void setX(int x) {
+            this.x = x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public void setY(int y) {
+            this.y = y;
+        }
+
+        public int getWidth() {
+            return width;
+        }
+
+        public void setWidth(int width) {
+            this.width = width;
+        }
+
+        public int getHeight() {
+            return height;
+        }
+
+        public void setHeight(int height) {
+            this.height = height;
+        }
     }
 
-    Oval() {
-        startPoint = new Point(0, 0);
-        currentPoint = new Point(0, 0);
-    }
 
-    Oval(int x1, int y1, Color c, boolean filledState) {
-        this();
-        this.startPoint.x = x1;
-        this.startPoint.y = y1;
-        this.shapeColor = c;
-        this.filledState = filledState;
-    }
+    class Oval extends Shape {
+        private int x;
+        private int y;
+        private int width;
+        private int height;
 
-    void setDragPoint(int x, int y) {
-        this.currentPoint.x = x;
-        this.currentPoint.y = y;
-    }
+        Oval() {
+            startPoint = new Point(0, 0);
+            currentPoint = new Point(0, 0);
+        }
 
+        Oval(int x1, int y1, Color c, boolean filledState) {
+            this();
+            this.startPoint.x = x1;
+            this.startPoint.y = y1;
+            this.shapeColor = c;
+            this.filledState = filledState;
+        }
+
+        void drawWhileDragging(Graphics g) {
+            setX(startPoint.x);
+            setY(startPoint.y);
+            setWidth(currentPoint.x - startPoint.x);
+            setHeight(currentPoint.y - startPoint.y);
+            // make sure to be able to draw in all directions
+            if (getWidth() < 0) {
+                setWidth(-getWidth());
+                setX(getX() - getWidth() + 1);
+                if (getX() < 0) {
+                    setWidth(getWidth() + getX());
+                    setX(0);
+                }
+            }
+            if (getHeight() < 0) {
+                setHeight(-getHeight());
+                setY(getY() - getHeight() + 1);
+                if (getY() < 0) {
+                    setHeight(getHeight() + getY());
+                    setY(0);
+                }
+            }
+            g.setColor(shapeColor);
+            if (filledState) g.fillOval(getX(), getY(), getWidth(), getHeight());
+            else g.drawOval(getX(), getY(), getWidth(), getHeight());
+        }
+
+        public void draw(Graphics g) {
+            g.setColor(shapeColor);
+            if (filledState) g.fillOval(getX(), getY(), getWidth(), getHeight());
+            else g.drawOval(getX(), getY(), getWidth(), getHeight());
+        }
+
+        void setDragPoint(int x, int y) {
+            this.currentPoint.x = x;
+            this.currentPoint.y = y;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public void setX(int x) {
+            this.x = x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public void setY(int y) {
+            this.y = y;
+        }
+
+        public int getWidth() {
+            return width;
+        }
+
+        public void setWidth(int width) {
+            this.width = width;
+        }
+
+        public int getHeight() {
+            return height;
+        }
+
+        public void setHeight(int height) {
+            this.height = height;
+        }
+    }
 }
