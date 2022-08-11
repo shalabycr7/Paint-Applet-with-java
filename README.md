@@ -2,6 +2,10 @@
 A small paint/scribble app using applet with java meant to be the final project for my summer training at ITI
 
 # Changelogs
+#### v 0.5
+* Improved Free-Hand drawing and removing lag and screen flickering
+* Add a little color indicator
+* Some UI improvements
 #### v 0.4
 * Added the ability to draw dashed shapes and lines
 * minor bug fixes
